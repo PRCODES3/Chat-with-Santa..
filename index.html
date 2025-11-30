@@ -1,28 +1,30 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ChatwithSanta.ai 🎅✨</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ChatwithSanta.ai</title>
 
-    <!-- Main global styling -->
-    <link rel="stylesheet" href="assets/css/style.css">
-
-    <!-- Landing Page Styling -->
-    <link rel="stylesheet" href="assets/css/landing.css">
-
-    <!-- JS Core -->
-    <script defer src="assets/js/app.js"></script>
+  <!-- Load global styling -->
+  <link rel="stylesheet" href="assets/css/style.css" />
+  <link rel="stylesheet" href="assets/css/landing.css" />
 </head>
 <body>
 
-    <!-- Main App Container -->
-    <div id="app"></div>
+  <!-- APP CONTAINER -->
+  <div id="app"></div>
 
-    <!-- Load Landing Page Automatically -->
-    <script>
-        loadScreen("landing/index.html");
-    </script>
+  <!-- Load scripts BEFORE calling loadScreen() -->
+  <script src="assets/js/app.js"></script>
+  <script src="assets/js/chat.js"></script>
+  <script src="assets/js/ai.js"></script>
+  <script src="assets/js/certificate.js"></script>
+  <script src="assets/js/parent.js"></script>
+
+  <!-- Start on the landing page -->
+  <script>
+    loadScreen("landing/index.html");
+  </script>
 
 </body>
 </html>
