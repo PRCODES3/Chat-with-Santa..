@@ -1,109 +1,81 @@
-/* ==========================================================
-   ChatwithSanta.ai — REAL AI CALLING ENGINE (Hybrid Mode)
-   Voice: Santa-Deep (slow, warm, magical)
-   ========================================================== */
+/* ============================================================
+   ChatwithSanta.ai — REALTIME SANTA VOICE ENGINE
+   Mode: Hybrid (Client-side key today, server later with no changes)
+   Voice: Santa-Deep (slow, magical, warm)
+   ============================================================ */
 
 let santaConnection = null;
 let santaStream = null;
-let santaAudio = null;
 
-// 🔑 Insert your OpenAI API key here (Hybrid Mode: Client first, server later)
+// PUT YOUR API KEY HERE (TEMPORARY — works on GitHub Pages)
 let OPENAI_API_KEY = "YOUR_OPENAI_API_KEY";
 
-/* ==========================================================
-   START AI SANTA CALL
-   ========================================================== */
 async function callSantaAI() {
+    const status = document.getElementById("call-status");
+    status.innerText = "🎅 Connecting to Santa…";
 
-  if (!OPENAI_API_KEY || OPENAI_API_KEY.length < 20) {
-    alert("⚠️ Please add your OpenAI API key inside /assets/js/ai.js");
-    return;
-  }
+    if (!OPENAI_API_KEY || OPENAI_API_KEY === "YOUR_OPENAI_API_KEY") {
+        alert("⚠️ Add your OpenAI API key inside assets/js/ai.js");
+        return;
+    }
 
-  document.getElementById("call-status").innerText = "Connecting to Santa… 🎅✨";
+    try {
+        santaConnection = new WebSocket("wss://api.openai.com/v1/realtime?model=gpt-4o-mini-realtime");
 
-  try {
-    santaConnection = new WebSocket("wss://api.openai.com/v1/realtime?model=gpt-4o-mini-tts");
+        santaConnection.onopen = () => {
+            status.innerText = "🎅 Santa is joining the call…";
 
-    santaConnection.onopen = () => {
-      santaConnection.send(JSON.stringify({
-        type: "session.update",
-        session: {
-          modalities: ["audio", "text"],
-          instructions:
-            "You are Santa Claus. Warm, magical, gentle. Use the Santa-Deep voice. Speak slowly. Respond to children in a joyful, safe tone.",
-          voice: {
-            name: "santa-deep",       // ⭐ Your selected voice
-            speed: 0.93,
-            style: "warm",
-          }
-        }
-      }));
+            // Send authentication
+            santaConnection.send(JSON.stringify({
+                type: "session.authenticate",
+                data: { api_key: OPENAI_API_KEY }
+            }));
 
-      document.getElementById("call-status").innerText =
-        "Santa is listening… Speak to him! 🎙️";
-    };
+            // Apply Santa-Deep voice
+            santaConnection.send(JSON.stringify({
+                type: "session.update",
+                data: {
+                    voice: "santa-deep",
+                    instructions: `
+                        You are Santa Claus. 
+                        Speak warm, magical, slow, and jolly.
+                        Address the child by name if provided.
+                        Add small Ho Ho Ho moments naturally.
+                    `
+                }
+            }));
 
-    santaConnection.onmessage = async (event) => {
-      const data = JSON.parse(event.data);
+            // Begin voice conversation
+            santaConnection.send(JSON.stringify({
+                type: "response.create",
+                data: {
+                    modalities: ["audio"],
+                    audio: { voice: "santa-deep" },
+                    instructions: "Start the conversation as Santa."
+                }
+            }));
+        };
 
-      // Santa sends audio
-      if (data.type === "response.audio.delta") {
-        if (!santaAudio) {
-          santaAudio = new Audio();
-          santaAudio.autoplay = true;
-        }
-        const audioData = Uint8Array.from(atob(data.delta), c => c.charCodeAt(0));
-        santaAudio.src = URL.createObjectURL(new Blob([audioData], { type: "audio/wav" }));
-      }
-    };
+        santaConnection.onmessage = async (event) => {
+            const msg = JSON.parse(event.data);
 
-    santaConnection.onerror = (err) => {
-      document.getElementById("call-status").innerText = "Error connecting to Santa.";
-      console.error(err);
-    };
+            // stream audio to child
+            if (msg.type === "response.audio.delta") {
+                if (!santaStream) {
+                    santaStream = new AudioContext();
+                    santaStream.destination;
+                }
+                const audioBuffer = await santaStream.decodeAudioData(msg.delta);
+                const source = santaStream.createBufferSource();
+                source.buffer = audioBuffer;
+                source.connect(santaStream.destination);
+                source.start();
+            }
+        };
 
-  } catch (error) {
-    console.error("Error:", error);
-  }
-
-  /* ==========================================================
-     Microphone Streaming → Santa
-     ========================================================== */
-  const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-  santaStream = stream;
-
-  const ctx = new AudioContext();
-  const source = ctx.createMediaStreamSource(stream);
-  const processor = ctx.createScriptProcessor(2048, 1, 1);
-
-  source.connect(processor);
-  processor.connect(ctx.destination);
-
-  processor.onaudioprocess = (e) => {
-    if (!santaConnection || santaConnection.readyState !== 1) return;
-
-    const input = e.inputBuffer.getChannelData(0);
-    const pcm = floatTo16BitPCM(input);
-
-    santaConnection.send(JSON.stringify({
-      type: "input_audio_buffer.append",
-      audio: btoa(String.fromCharCode(...pcm))
-    }));
-
-    santaConnection.send(JSON.stringify({
-      type: "input_audio_buffer.commit"
-    }));
-  };
+    } catch (err) {
+        status.innerText = "❌ Error connecting to Santa.";
+        console.error(err);
+    }
 }
 
-/* ==========================================================
-   Helper — Convert raw mic audio to 16-bit PCM
-   ========================================================== */
-function floatTo16BitPCM(float32Array) {
-  const pcm = new Int16Array(float32Array.length);
-  for (let i = 0; i < float32Array.length; i++) {
-    pcm[i] = Math.max(-1, Math.min(1, float32Array[i])) * 0x7fff;
-  }
-  return pcm;
-}
